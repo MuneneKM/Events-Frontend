@@ -381,7 +381,7 @@ export function Booking() {
                                                     Full Name
                                                 </label>
                                                 <Input
-                                                    placeholder="John Doe"
+                                                    placeholder="James Kamau"
                                                     value={attendee.full_name}
                                                     onChange={(e) => updateAttendee(attendee.id, 'full_name', e.target.value)}
                                                 />
@@ -392,7 +392,7 @@ export function Booking() {
                                                 </label>
                                                 <Input
                                                     type="email"
-                                                    placeholder="john@example.com"
+                                                    placeholder="james@example.com"
                                                     value={attendee.email}
                                                     onChange={(e) => updateAttendee(attendee.id, 'email', e.target.value)}
                                                 />

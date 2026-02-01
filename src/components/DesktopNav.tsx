@@ -10,7 +10,6 @@ export function DesktopNav() {
   const navItems = [
     { icon: Home, label: 'Events', path: '/dashboard/' },
     { icon: Users, label: 'Speakers', path: '/dashboard/speakers' },
-    { icon: FileText, label: 'Agenda', path: '/dashboard/agenda' },
     { icon: Network, label: 'Networking', path: '/dashboard/networking' },
     { icon: User, label: 'Profile', path: '/dashboard/profile' },
   ];

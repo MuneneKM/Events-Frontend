@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { Calendar, MapPin, User, QrCode, Award, Clock, Users, Tag, UserPlus, Link2, Ticket } from 'lucide-react';
+import { Calendar, MapPin, User, QrCode, Award, Clock, Users, Tag, UserPlus, Link2, Ticket, ArrowRight } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -12,16 +12,18 @@ import { useAuth } from '../context/AuthContext';
 interface Event {
   id: string;
   name: string;
-  bannerImage: string;
+  banner_image: string;
   start_date: string;
   end_date: string;
   venue: string;
+  event_name: string;
   venue_name: string;
+  description: string;
   host_name: string;
   organizer: string;
   ticketType: 'Regular' | 'VIP';
   status: 'Upcoming' | 'Ongoing' | 'Completed';
-  qrCode: string;
+  qr_code: string;
   vipBenefits?: string[];
 }
 
@@ -66,10 +68,55 @@ interface Content {
   title: string;
   sessionName: string;
   type: 'Video' | 'PDF' | 'Slides';
-  accessLevel: 'All' | 'VIP' | 'Paid';
+  access_level: 'All' | 'VIP' | 'Paid';
   url: string;
   thumbnail: string;
 }
+
+// Ticket payload format from API
+interface TicketPayload {
+  has_ticket: boolean;
+  ticket_id: string;
+  event_id: string;
+  event_name: string;
+  start_date: string;
+  end_date: string;
+  venue: string;
+  venue_name: string;
+  ticket_type: string;
+  ticket_category: string;
+  ticket_category_name: string;
+  access_level: string;
+  ticket_price: number;
+  qr_code: string;
+  issue_date: string;
+  status: string;
+  checked_in: number;
+  discount_code: string | null;
+  discount_amount: number;
+  total_amount: number;
+  full_name: string;
+  email: string;
+  merchandise_total: number;
+  merchandise: {
+    merchandise: string;
+    quantity: number;
+    price: number;
+  }[];
+}
+
+type Props = {
+  html: string;
+};
+
+export function HtmlRenderer({ html }: Props) {
+  return (
+    <div
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
 
 export function EventOverview() {
   const { eventId } = useParams();
@@ -84,6 +131,7 @@ export function EventOverview() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [hasTicket, setHasTicket] = useState(false);
+  const [ticketData, setTicketData] = useState<TicketPayload | null>(null);
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -99,7 +147,8 @@ export function EventOverview() {
           contentAPI.getByEvent(eventId)
         ]);
 
-        setEvent(eventRes.data.message || null);
+        const eventData = eventRes.data.message || null;
+        setEvent(eventData);
         setEventSessions(sessionsRes.data.message || []);
         setEventMerchandise(merchandiseRes.data.message || []);
         if (isAuthenticated) {
@@ -110,11 +159,30 @@ export function EventOverview() {
         // Check if user has ticket for this event
         if (isAuthenticated && user?.email) {
           try {
-            const ticketResponse = await ticketAPI.hasTicket(user.email, eventId);
-            setHasTicket(ticketResponse.data.message?.has_ticket || false);
+            const ticketResponse = await ticketAPI.getMyTickets(user.email, eventId);
+            const ticketMsg = ticketResponse.data.message;
+
+            // Handle ticket - could be array or single object
+            if (Array.isArray(ticketMsg)) {
+              const foundTicket = ticketMsg.find((t: TicketPayload) => t.has_ticket);
+              if (foundTicket) {
+                setHasTicket(true);
+                setTicketData(foundTicket);
+              } else {
+                setHasTicket(false);
+                setTicketData(null);
+              }
+            } else if (ticketMsg && ticketMsg.has_ticket) {
+              setHasTicket(true);
+              setTicketData(ticketMsg);
+            } else {
+              setHasTicket(false);
+              setTicketData(null);
+            }
           } catch (ticketErr) {
             console.error('Failed to check ticket status:', ticketErr);
             setHasTicket(false);
+            setTicketData(null);
           }
         }
       } catch (err) {
@@ -174,7 +242,7 @@ export function EventOverview() {
       {/* Banner */}
       <div className="h-64 md:h-80 overflow-hidden relative">
         <img
-          src={event.bannerImage}
+          src={event.banner_image}
           alt={event.name}
           className="w-full h-full object-cover"
         />
@@ -198,16 +266,6 @@ export function EventOverview() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Book Now Button - Show if not registered or registered but no ticket */}
-        {/* {(!isRegistered || (isRegistered && !hasTicket)) && event.status !== 'Completed' && (
-          <div className="mb-6">
-            <Button size="lg" onClick={handleBookNow}>
-              <Ticket className="size-5 mr-2" />
-              {isRegistered ? 'Book Event' : 'Book Now'}
-            </Button>
-          </div>
-        )} */}
-
         {/* Welcome message for registered users with ticket */}
         {isRegistered && hasTicket && (
           <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
@@ -286,25 +344,15 @@ export function EventOverview() {
                     </CardContent>
                   </Card>
 
-                  {/* VIP Benefits */}
-                  {event.vipBenefits && event.vipBenefits.length > 0 && (
+                  {/* Description */}
                     <Card className="border-2 border-amber-200 dark:border-amber-800">
                       <CardContent className="p-6">
                         <div className="flex items-center gap-2 mb-4">
-                          <Award className="size-5 text-amber-600" />
-                          <h2 className="text-xl font-semibold">VIP Benefits</h2>
+                          <h2 className="text-xl font-semibold">Description</h2>
                         </div>
-                        <ul className="space-y-2">
-                          {event.vipBenefits.map((benefit, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="size-1.5 rounded-full bg-amber-600" />
-                              <span>{benefit}</span>
-                            </li>
-                          ))}
-                        </ul>
+                            <HtmlRenderer html={event.description} />
                       </CardContent>
                     </Card>
-                  )}
                 </div>
               </TabsContent>
 
@@ -392,24 +440,10 @@ export function EventOverview() {
                                 {item.description}
                               </p>
                             </div>
-                            {/* {item.isVipOnly && (
-                              <Badge className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white">
-                                VIP Only
-                              </Badge>
-                            )} */}
                           </div>
-                          {/* <div className="mt-4 flex items-center justify-between">
-                            {item.pickupStatus && (
-                              <Badge className={item.pickupStatus === 'Available' ? 'bg-green-500/10 text-green-700' : 'bg-gray-500/10 text-gray-700'}>
-                                {item.pickupStatus}
-                              </Badge>
-                            )}
-                            {item.downloadUrl && (
-                              <Button variant="outline" size="sm">
-                                Download
-                              </Button>
-                            )}
-                          </div> */}
+                          <div className="mt-4 flex items-center justify-between">
+                            <span className="font-semibold">{item.currency} {item.price.toFixed(2)}</span>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
@@ -514,14 +548,14 @@ export function EventOverview() {
                             </div>
                             <Badge
                               className={
-                                item.accessLevel === 'VIP'
+                                item.access_level === 'VIP'
                                   ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
-                                  : item.accessLevel === 'Paid'
+                                  : item.access_level === 'Paid'
                                     ? 'bg-purple-500/10 text-purple-700'
                                     : 'bg-green-500/10 text-green-700'
                               }
                             >
-                              {item.accessLevel}
+                              {item.access_level}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2 mt-3">
@@ -570,6 +604,23 @@ export function EventOverview() {
                 </Card>
               )}
 
+              {/* Sponsorship & Exhibition Link */}
+              <Card className="cursor-pointer hover:border-blue-300 transition-colors" onClick={() => navigate(`/dashboard/event/${eventId}/sponsorship`)}>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Award className="size-5 text-blue-600" />
+                    <h3 className="font-semibold">Sponsorship & Exhibition</h3>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Become a sponsor or request a booth to showcase your brand.
+                  </p>
+                  <Button className="w-full" variant="outline">
+                    View Sponsorship Options
+                    <ArrowRight className="size-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* QR Code - Only show if has ticket */}
               {hasTicket && (
                 <Card>
@@ -579,7 +630,7 @@ export function EventOverview() {
                       <h3 className="font-semibold">Check-in QR Code</h3>
                     </div>
                     <div className="flex justify-center p-4 bg-white rounded-lg">
-                      <QRCodeSVG value={event.qrCode} size={200} />
+                        <QRCodeSVG value={ticketData?.qr_code || event.qr_code} size={200} />
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-400 text-center mt-4">
                       Show this code at the venue for check-in
@@ -597,11 +648,11 @@ export function EventOverview() {
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600 dark:text-gray-400">Ticket Type</span>
                         <Badge className={
-                          event.ticketType === 'VIP'
+                          ticketData?.ticket_category_name === 'VIP'
                             ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
                             : 'bg-blue-500/10 text-blue-700 dark:text-blue-300'
                         }>
-                          {event.ticketType}
+                          {ticketData?.ticket_category_name || event.ticketType}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
@@ -610,15 +661,11 @@ export function EventOverview() {
                           Confirmed
                         </Badge>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Code</span>
-                        <span className="font-mono text-sm">{event.qrCode}</span>
-                      </div>
                     </div>
                     <Button
                       variant="outline"
                       className="w-full mt-4"
-                      onClick={() => navigate(`/dashboard/ticket/${event.id}`)}
+                      onClick={() => navigate(`/dashboard/event/${eventId}/ticket`)}
                     >
                       View Complete Ticket
                     </Button>

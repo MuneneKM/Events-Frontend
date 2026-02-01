@@ -26,7 +26,7 @@ export function MyEvents() {
   const [activeTab, setActiveTab] = useState('all');
   const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [myEvents, setMyEvents] = useState<Event[]>([]);
-  const [eventsWithTickets, setEventsWithTickets] = useState<Set<string>>(new Set());
+  const [registeredEvents, setRegisteredEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -45,23 +45,41 @@ export function MyEvents() {
         setAllEvents(allEventsData);
         setMyEvents(myEventsData);
 
-        // Check which events the user has tickets for
-        if (user?.email && myEventsData.length > 0) {
-          const ticketChecks = myEventsData.map(async (event: Event) => {
-            try {
-              const response = await ticketAPI.hasTicket(user.email, event.name);
-              if (response.data.message?.has_ticket) {
-                return event.name;
-              }
-            } catch (err) {
-              console.error(`Failed to check ticket for event ${event.name}:`, err);
-            }
-            return null;
-          });
+        // Fetch all events where user has tickets
+        if (user?.email) {
+          try {
+            const ticketsResponse = await ticketAPI.getAllMyTickets(user.email);
+            const ticketsData = ticketsResponse.data.message;
 
-          const results = await Promise.all(ticketChecks);
-          const eventsWithTicketsSet = new Set(results.filter(Boolean));
-          setEventsWithTickets(eventsWithTicketsSet);
+            // Handle tickets - could be array or single object
+            let registeredEventsData: Event[] = [];
+            if (Array.isArray(ticketsData)) {
+              // Filter events with has_ticket true and map to Event format
+              registeredEventsData = ticketsData
+                .filter((t: { has_ticket: boolean }) => t.has_ticket)
+                .map((t: { event_id: string }) => {
+                  // Find the full event details from allEvents
+                  const eventDetails = allEventsData.find((e: Event) => e.name === t.event_id);
+                  return eventDetails || {
+                    name: t.event_id,
+                    event_name: t.event_id,
+                    banner_image: '',
+                    start_date: '',
+                    end_date: '',
+                    venue_name: '',
+                    host_name: '',
+                    ticket_type: 'Regular' as const,
+                    status: 'Upcoming' as const,
+                    qrCode: ''
+                  };
+                });
+            }
+
+            setRegisteredEvents(registeredEventsData);
+          } catch (err) {
+            console.error('Failed to fetch registered events:', err);
+            setRegisteredEvents([]);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch events:', err);
@@ -140,18 +158,16 @@ export function MyEvents() {
         </TabsContent>
 
         <TabsContent value="my-events">
-          {eventsWithTickets.size > 0 ? (
+          {registeredEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {myEvents
-                .filter((event) => eventsWithTickets.has(event.name))
-                .map((event) => (
-                  <EventCard
-                    key={event.name}
-                    event={event}
-                    onOpen={() => handleOpenEvent(event.name)}
-                    onFeedback={handleFeedback}
-                  />
-                ))}
+              {registeredEvents.map((event) => (
+                <EventCard
+                  key={event.name}
+                  event={event}
+                  onOpen={() => handleOpenEvent(event.name)}
+                  onFeedback={handleFeedback}
+                />
+              ))}
             </div>
           ) : (
             <div className="text-center py-12">

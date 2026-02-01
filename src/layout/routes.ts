@@ -13,6 +13,7 @@ import { Booking } from '../pages/Booking';
 import { Ticket } from '../pages/Ticket';
 import { Register } from '../pages/Register';
 import { Login } from '../pages/Login';
+import { Sponsorship } from '../pages/Sponsorship';
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: 'event/:eventId/feedback', Component: Feedback },
       { path: 'event/:eventId/book', Component: Booking },
       { path: 'event/:eventId/ticket', Component: Ticket },
+      { path: 'event/:eventId/sponsorship', Component: Sponsorship },
       { path: 'agenda', Component: Agenda },
       { path: 'speakers', Component: Speakers },
       { path: 'content', Component: Content },

@@ -79,6 +79,37 @@ export const eventsAPI = {
     getTicketTypes: (eventId: string) =>
         frappeClient.get(`/eventive.api.ticket.get_ticket_types?event_id=${eventId}`),
 
+    getSponsorTiers: (eventId: string) =>
+        frappeClient.get(`/eventive.api.events.get_sponsor_tiers?event_id=${eventId}`),
+
+    getBoothPackages: (eventId: string) =>
+        frappeClient.get(`/eventive.api.events.get_booth_packages?event_id=${eventId}`),
+
+    createSponsor: (data: {
+        event: string;
+        sponsor_name: string;
+        company: string;
+        tier: string;
+        tier_name: string;
+        amount: number;
+        company_logo?: File;
+    }) =>
+        frappeClient.post('/eventive.api.events.create_sponsor', data),
+
+    createExhibitor: (data: {
+        event: string;
+        exhibitor_name: string;
+        email: string;
+        phone: string;
+        website: string;
+        booth_package: string;
+        package_name: string;
+        price: number;
+        notes: string;
+        logo?: File;
+    }) =>
+        frappeClient.post('/eventive.api.events.create_exhibitor', data),
+
     createBooking: (data: {
         event_id: string;
         email: string;
@@ -179,8 +210,11 @@ export const merchandiseAPI = {
 
 // Ticket APIs
 export const ticketAPI = {
-    getMyTickets: () =>
-        frappeClient.get('/eventive.api.get_my_tickets'),
+    getMyTickets: (email: string, eventId: string) =>
+        frappeClient.get(`/eventive.api.ticket.get_ticket?email=${email}&event_id=${eventId}`),
+
+    getAllMyTickets: (email: string) =>
+        frappeClient.get(`/eventive.api.ticket.get_my_tickets`),
 
     getByBooking: (bookingId: string) =>
         frappeClient.get(`/eventive.api.get_tickets?booking_id=${bookingId}`),
