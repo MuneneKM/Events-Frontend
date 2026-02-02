@@ -237,20 +237,19 @@ export const networkingAPI = {
         frappeClient.post('/eventive.api.connect', { match_id: matchId }),
 
     getConnected: () =>
-        frappeClient.get('/eventive.api.get_connected_attendees'),
+        frappeClient.get('/eventive.api.networking.get_connected_matches'),
 };
 
 // Message APIs
 export const messageAPI = {
     sendMessage: (data: {
         receiver_id: string;
-        event_id: string;
         message: string;
     }) =>
-        frappeClient.post('/eventive.api.send_message', data),
+        frappeClient.post('/eventive.api.networking.send_message', data),
 
     getMessages: (otherUserId: string, eventId: string) =>
-        frappeClient.get(`/eventive.api.get_messages?other_user_id=${otherUserId}&event_id=${eventId}`),
+        frappeClient.get(`/eventive.api.networking.get_messages?other_user_id=${otherUserId}&event_id=${eventId}`),
 
     getConversation: (otherUserId: string) =>
         frappeClient.get(`/eventive.api.get_conversation?other_user_id=${otherUserId}`),
@@ -295,6 +294,40 @@ export interface Message {
     message: string;
     is_read: boolean;
     created_at: string;
+}
+
+export interface NetworkingMatch {
+    id: string;
+    name: string;
+    role: string;
+    company?: string;
+    type: 'Attendee' | 'Speaker' | 'Sponsor';
+    interests: string[];
+    matchScore: number;
+    photo: string;
+    connected: boolean;
+    email?: string;
+    linkedin?: string;
+    bio?: string;
+}
+
+export interface ConnectedMatch {
+    match_id: string;
+    attendee_2: {
+        name: string;
+        user: string;
+        full_name: string;
+        company: string;
+        job_title: string;
+        bio: string;
+        profile_image: string | null;
+        social_link: string | null;
+        open_to_networking: number;
+    };
+    match_score: number;
+    event: string;
+    status: string;
+    connected_on: string | null;
 }
 
 // Export the configured client for custom requests

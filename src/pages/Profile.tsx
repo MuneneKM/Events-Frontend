@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Linkedin, Twitter, Mail } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Linkedin } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -9,29 +9,31 @@ import { Switch } from '../components/ui/switch';
 import { authAPI } from '../services/api';
 import { toast } from 'sonner';
 
-interface SocialLinks {
-  linkedin?: string;
-  twitter?: string;
+
+
+interface Profile {
+  profile_id: string;
+  profile_image?: string | null;
+  role: string;
+  open_to_networking: boolean | number;
+  social_link?: string | null;
+  company?: string | null;
+  job_title?: string | null;
+  bio?: string | null;
+  interests: string[];
 }
 
 interface UserProfile {
-  id: string;
-  first_name: string;
-  last_name: string;
+  user_id: string;
   email: string;
-  profiles: Profile;
+  first_name: string;
+  last_name?: string | null;
+  full_name: string;
+  is_logged_in: boolean;
+  profiles: Profile[];
 }
 
-interface Profile {
-  profile_image?: string;
-  role: string;
-  open_to_networking: boolean;
-  social_link?: string;
-  company?: string;
-  job_title?: string;
-  bio?: string;
-  interests: string[];
-}
+
 
 const availableInterests = [
   'AI/ML',
@@ -46,37 +48,37 @@ const availableInterests = [
   'UI/UX Design',
 ];
 
+
+
 export function Profile() {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  
 
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         setLoading(true);
         const response = await authAPI.getCurrentAttendee();
-        const profileData = response.data.message;
-        // Ensure profiles and interests exist
-        if (!profileData) {
+        const data: UserProfile = response.data.message;
+
+        if (!data || !data.profiles?.length) {
           setUser(null);
           return;
         }
-        if (!profileData.profiles) {
-          profileData.profiles = {
-            role: '',
-            open_to_networking: false,
-            interests: [],
-          };
-        } else if (!profileData.profiles.interests) {
-          profileData.profiles.interests = [];
-        }
-        setUser(profileData);
+
+        setUser(data);
+        setProfile({
+          ...data.profiles[0],
+          interests: data.profiles[0].interests ?? [],
+        });
       } catch (err) {
-        setError('Failed to load profile');
         console.error(err);
+        setError('Failed to load profile');
       } finally {
         setLoading(false);
       }
@@ -85,46 +87,50 @@ export function Profile() {
     fetchUserProfile();
   }, []);
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success('Profile updated successfully!');
-  };
-
+  
 
   const toggleInterest = (interest: string) => {
-    setUser((prev) => {
+    if (!isEditing || !profile) return;
+
+    setProfile((prev) => {
       if (!prev) return prev;
 
-      const currentInterests = prev.profiles.interests || [];
-      const updatedInterests = currentInterests.includes(interest)
-        ? currentInterests.filter((i) => i !== interest)
-        : [...currentInterests, interest];
+      const interests = prev.interests.includes(interest)
+        ? prev.interests.filter((i) => i !== interest)
+        : [...prev.interests, interest];
 
-      const updatedProfile = { ...prev.profiles, interests: updatedInterests };
-
-      return {
-        ...prev,
-        profiles: updatedProfile,
-      };
+      return { ...prev, interests };
     });
+  };
+
+  const handleSave = async () => {
+    try {
+      // TODO: call update API here
+      setIsEditing(false);
+      toast.success('Profile updated successfully!');
+    } catch (err) {
+      toast.error('Failed to update profile');
+    }
   };
 
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <p className="text-gray-600 dark:text-gray-300">Loading profile...</p>
       </div>
     );
   }
 
-  if (error || !user) {
+  if (error || !user || !profile) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <p className="text-red-500">{error || 'Failed to load profile'}</p>
       </div>
     );
   }
+
+  
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
@@ -141,15 +147,20 @@ export function Profile() {
           <CardContent className="p-6">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-xl font-semibold mb-1">Profile Information</h2>
-                <Badge className={
-                  user.profiles.role === 'VIP'
-                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
-                    : 'bg-blue-500/10 text-blue-700 dark:text-blue-300'
-                }>
-                  {user.profiles.role} Member
+                <h2 className="text-xl font-semibold mb-1">
+                  Profile Information
+                </h2>
+                <Badge
+                  className={
+                    profile.role === 'VIP'
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
+                      : 'bg-blue-500/10 text-blue-700 dark:text-blue-300'
+                  }
+                >
+                  {profile.role} Member
                 </Badge>
               </div>
+
               <Button
                 variant={isEditing ? 'default' : 'outline'}
                 onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
@@ -158,27 +169,14 @@ export function Profile() {
               </Button>
             </div>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={user.first_name}
-                    onChange={(e) => setUser({ ...user, first_name: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={user.email}
-                    onChange={(e) => setUser({ ...user, email: e.target.value })}
-                    disabled={!isEditing}
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Full Name</Label>
+                <Input value={user.first_name} disabled />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={user.email} disabled />
               </div>
             </div>
           </CardContent>
@@ -188,20 +186,23 @@ export function Profile() {
         <Card>
           <CardContent className="p-6">
             <h2 className="text-xl font-semibold mb-4">Interests</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Select your areas of interest to improve networking matches
-            </p>
             <div className="flex flex-wrap gap-2">
-              {availableInterests.map((interest) => (
-                <Badge
-                  key={interest}
-                  variant={(user.profiles.interests || []).includes(interest) ? 'default' : 'outline'}
-                  className={`cursor-pointer transition-all ${!isEditing && !(user.profiles.interests || []).includes(interest) ? 'opacity-70 hover:opacity-100' : ''}`}
-                  onClick={() => isEditing && toggleInterest(interest)}
-                >
-                  {interest}
-                </Badge>
-              ))}
+              {availableInterests.map((interest) => {
+                const selected = profile.interests.includes(interest);
+
+                return (
+                  <Badge
+                    key={interest}
+                    variant={selected ? 'default' : 'outline'}
+                    className={`cursor-pointer ${
+                      !isEditing && !selected ? 'opacity-70' : ''
+                    }`}
+                    onClick={() => toggleInterest(interest)}
+                  >
+                    {interest}
+                  </Badge>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -210,23 +211,17 @@ export function Profile() {
         <Card>
           <CardContent className="p-6">
             <h2 className="text-xl font-semibold mb-4">Preferences</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="networking" className="text-base">Enable Networking</Label>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Allow other attendees to find and connect with you
-                  </p>
-                </div>
-                <Switch
-                  id="networking"
-                  checked={user.profiles.open_to_networking}
-                  onCheckedChange={(checked) =>
-                    setUser({ ...user, profiles: { ...user.profiles, open_to_networking: checked } })
-                  }
-                  disabled={!isEditing}
-                />
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Enable Networking</Label>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Allow other attendees to find and connect with you
+                </p>
               </div>
+              <Switch
+                checked={Boolean(profile.open_to_networking)}
+                disabled={!isEditing}
+              />
             </div>
           </CardContent>
         </Card>
@@ -234,44 +229,19 @@ export function Profile() {
         {/* Social Links */}
         <Card>
           <CardContent className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Social Media Links</h2>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="linkedin" className="flex items-center gap-2">
-                  <Linkedin className="size-4" />
-                  LinkedIn
-                </Label>
-                <Input
-                  id="linkedin"
-                  value={user.profiles.social_link || ''}
-                  onChange={(e) =>
-                    setUser({
-                      ...user,
-                      profiles: { ...user.profiles, social_link: e.target.value },
-                    })
-                  }
-                  disabled={!isEditing}
-                  placeholder="https://linkedin.com/in/yourprofile"
-                />
-              </div>
-              {/* <div>
-                <Label htmlFor="twitter" className="flex items-center gap-2">
-                  <Twitter className="size-4" />
-                  Twitter
-                </Label>
-                <Input
-                  id="twitter"
-                  value={user.socialLinks.twitter || ''}
-                  onChange={(e) =>
-                    setUser({
-                      ...user,
-                      socialLinks: { ...user.socialLinks, twitter: e.target.value },
-                    })
-                  }
-                  disabled={!isEditing}
-                  placeholder="https://twitter.com/yourhandle"
-                />
-              </div> */}
+            <h2 className="text-xl font-semibold mb-4">
+              Social Media Links
+            </h2>
+            <div>
+              <Label className="flex items-center gap-2">
+                <Linkedin className="size-4" />
+                LinkedIn
+              </Label>
+              <Input
+                value={profile.social_link ?? ''}
+                disabled={!isEditing}
+                placeholder="https://linkedin.com/in/yourprofile"
+              />
             </div>
           </CardContent>
         </Card>

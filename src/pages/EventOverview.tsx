@@ -249,7 +249,7 @@ export function EventOverview() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
           <div className="max-w-7xl mx-auto px-4 pb-8 w-full">
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-              {event.name}
+              {event.event_name}
             </h1>
             <div className="flex gap-2">
               <Badge className="bg-white/90 text-gray-900">
@@ -270,7 +270,7 @@ export function EventOverview() {
         {isRegistered && hasTicket && (
           <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
             <p className="text-green-800 dark:text-green-200">
-              Welcome back, <span className="font-semibold">{user?.name}</span>! You are registered for this event.
+              You have valid ticket for this event, Enjoy you time!
             </p>
           </div>
         )}

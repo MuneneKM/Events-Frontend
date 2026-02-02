@@ -5,6 +5,12 @@ import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { messageAPI, type Message } from '../services/api';
+import { toast } from 'sonner';
+
+// Get eventId from localStorage (set when user opens an event)
+const getDefaultEventId = () => {
+    return localStorage.getItem('currentEventId') || '';
+};
 
 interface MessageDialogProps {
     open: boolean;
@@ -19,7 +25,7 @@ export function MessageDialog({
     onOpenChange,
     recipientId,
     recipientName,
-    eventId = '',
+    eventId: propEventId,
 }: MessageDialogProps) {
     const { user } = useAuth();
     const [message, setMessage] = useState('');
@@ -27,6 +33,9 @@ export function MessageDialog({
     const [isLoading, setIsLoading] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Use prop eventId or get from localStorage
+    const eventId = propEventId || getDefaultEventId();
 
     // Load messages when dialog opens
     useEffect(() => {
@@ -69,11 +78,16 @@ export function MessageDialog({
     const handleSend = async () => {
         if (!message.trim()) return;
 
+        // Validate event_id is present
+        if (!eventId) {
+            toast.error('Event context not found. Please navigate to an event first.');
+            return;
+        }
+
         setIsSending(true);
         try {
             await messageAPI.sendMessage({
                 receiver_id: recipientId,
-                event_id: eventId,
                 message: message.trim(),
             });
 
@@ -91,8 +105,10 @@ export function MessageDialog({
             };
             setMessages((prev) => [...prev, newMessage]);
             setMessage('');
+            toast.success('Message sent!');
         } catch (error) {
             console.error('Failed to send message:', error);
+            toast.error('Failed to send message. Please try again.');
             // For demo, add message locally even if API fails
             const newMessage: Message = {
                 id: Date.now().toString(),
@@ -148,15 +164,15 @@ export function MessageDialog({
                                 >
                                     <div
                                         className={`max-w-[80%] rounded-lg p-3 ${isOwn
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-800'
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-gray-100 dark:bg-gray-800'
                                             }`}
                                     >
                                         <p className="text-sm">{msg.message}</p>
                                         <p
                                             className={`text-xs mt-1 ${isOwn
-                                                    ? 'text-blue-100'
-                                                    : 'text-gray-500'
+                                                ? 'text-blue-100'
+                                                : 'text-gray-500'
                                                 }`}
                                         >
                                             {formatTime(msg.created_at)}
