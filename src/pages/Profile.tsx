@@ -56,8 +56,11 @@ export function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [socialLink, setSocialLink] = useState<string>('');
+  const [networkingEnabled, setNetworkingEnabled] = useState<boolean>(false);
 
-  
+
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -76,6 +79,8 @@ export function Profile() {
           ...data.profiles[0],
           interests: data.profiles[0].interests ?? [],
         });
+        setNetworkingEnabled(Boolean(data.profiles[0].open_to_networking));
+        setSocialLink(data.profiles[0].social_link ?? '');
       } catch (err) {
         console.error(err);
         setError('Failed to load profile');
@@ -87,7 +92,7 @@ export function Profile() {
     fetchUserProfile();
   }, []);
 
-  
+
 
   const toggleInterest = (interest: string) => {
     if (!isEditing || !profile) return;
@@ -104,12 +109,23 @@ export function Profile() {
   };
 
   const handleSave = async () => {
+    if (!profile) return;
+
+    setSaving(true);
     try {
-      // TODO: call update API here
+      await authAPI.updateProfile({
+        profile_id: profile.profile_id,
+        interests: profile.interests,
+        open_to_networking: networkingEnabled,
+        social_link: socialLink || undefined,
+      });
       setIsEditing(false);
       toast.success('Profile updated successfully!');
     } catch (err) {
+      console.error(err);
       toast.error('Failed to update profile');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -130,7 +146,7 @@ export function Profile() {
     );
   }
 
-  
+
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
@@ -164,8 +180,9 @@ export function Profile() {
               <Button
                 variant={isEditing ? 'default' : 'outline'}
                 onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+                disabled={saving}
               >
-                {isEditing ? 'Save Changes' : 'Edit Profile'}
+                {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit Profile'}
               </Button>
             </div>
 
@@ -194,9 +211,8 @@ export function Profile() {
                   <Badge
                     key={interest}
                     variant={selected ? 'default' : 'outline'}
-                    className={`cursor-pointer ${
-                      !isEditing && !selected ? 'opacity-70' : ''
-                    }`}
+                    className={`cursor-pointer ${!isEditing && !selected ? 'opacity-70' : ''
+                      }`}
                     onClick={() => toggleInterest(interest)}
                   >
                     {interest}
@@ -219,7 +235,8 @@ export function Profile() {
                 </p>
               </div>
               <Switch
-                checked={Boolean(profile.open_to_networking)}
+                checked={networkingEnabled}
+                onCheckedChange={setNetworkingEnabled}
                 disabled={!isEditing}
               />
             </div>
@@ -238,7 +255,8 @@ export function Profile() {
                 LinkedIn
               </Label>
               <Input
-                value={profile.social_link ?? ''}
+                value={socialLink}
+                onChange={(e) => setSocialLink(e.target.value)}
                 disabled={!isEditing}
                 placeholder="https://linkedin.com/in/yourprofile"
               />

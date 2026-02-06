@@ -52,7 +52,11 @@ export function MessageDialog({
     const loadMessages = async () => {
         setIsLoading(true);
         try {
-            const response = await messageAPI.getConversation(recipientId);
+            // Validate eventId is present before making API call
+            if (!eventId) {
+                throw new Error('Event context not found');
+            }
+            const response = await messageAPI.getConversation(recipientId, eventId);
             setMessages(response.data.message || []);
         } catch (error) {
             console.error('Failed to load messages:', error);

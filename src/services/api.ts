@@ -63,6 +63,14 @@ export const authAPI = {
         interests: string[];
     }) =>
         frappeClient.post('/eventive.api.auth.register', userData),
+
+    updateProfile: (data: {
+        profile_id: string;
+        interests: string[];
+        open_to_networking: boolean;
+        social_link?: string;
+    }) =>
+        frappeClient.post('/eventive.api.auth.update_profile', data),
 };
 
 // Event APIs
@@ -251,8 +259,8 @@ export const messageAPI = {
     getMessages: (otherUserId: string, eventId: string) =>
         frappeClient.get(`/eventive.api.networking.get_messages?other_user_id=${otherUserId}&event_id=${eventId}`),
 
-    getConversation: (otherUserId: string) =>
-        frappeClient.get(`/eventive.api.get_conversation?other_user_id=${otherUserId}`),
+    getConversation: (otherUserId: string, eventId: string) =>
+        frappeClient.get(`/eventive.api.networking.get_messages?other_user_id=${otherUserId}&event_id=${eventId}`),
 
     markAsRead: (messageId: string) =>
         frappeClient.post('/eventive.api.mark_message_read', { message_id: messageId }),
